@@ -415,7 +415,7 @@ There are three overloads:
 
 * `.insn value` - emit a raw instruction with the given value
 * `.insn insn_length, value` - the same, but also verify that the instruction length has the given value in bytes
-* `.insn type, operand [,...,operand_n]` - use one of the [common instruction formats](https://sourceware.org/binutils/docs/as/RISC_002dV_002dFormats.html)
+* `.insn type, operand [,...,operand_n]` - use one of the [instruction formats](#instruction_formats)
 
 For example `add a0, a1, a2` could also be written as:
 
@@ -426,6 +426,232 @@ For example `add a0, a1, a2` could also be written as:
 
 You can alternatively emit raw instructions using `.word`, however this may
 lead to worse disassembly.
+
+### <a name=instruction_formats></a> Instruction formats
+
+The opcodes and operand inputs for these instruction formats are defined in the
+[opcodes](#opcodes) and [operands](#operands) sections, respectively.
+
+#### R type
+```
+.insn r opcode7, func3, func7, rd, rs1, rs2
+
++-------+-----+-----+-------+----+---------+
+| func7 | rs2 | rs1 | func3 | rd | opcode7 |
++-------+-----+-----+-------+----+---------+
+31      25    20    15      12   7        0
+```
+
+#### R type with 4 register operands
+```
+.insn r opcode7, func3, func2, rd, rs1, rs2, rs3
+.insn r4 opcode7, func3, func2, rd, rs1, rs2, rs3
+
++-----+-------+-----+-----+-------+----+---------+
+| rs3 | func2 | rs2 | rs1 | func3 | rd | opcode7 |
++-----+-------+-----+-----+-------+----+---------+
+31    27      25    20    15      12   7         0
+```
+
+#### I type
+```
+.insn i opcode7, func3, rd, rs1, simm12
+.insn i opcode7, func3, rd, simm12(rs1)
+
++--------------+-----+-------+----+---------+
+| simm12[11:0] | rs1 | func3 | rd | opcode7 |
++--------------+-----+-------+----+---------+
+31             20    15      12   7         0
+```
+
+#### S type
+```
+.insn s opcode7, func3, rs2, simm12(rs1)
+
++--------------+-----+-----+-------+-------------+---------+
+| simm12[11:5] | rs2 | rs1 | func3 | simm12[4:0] | opcode7 |
++--------------+-----+-----+-------+-------------+---------+
+31             25    20    15      12            7         0
+```
+
+#### B and SB type
+```
+.insn s opcode7, func3, rs1, rs2, symbol
+.insn sb opcode7, func3, rs1, rs2, symbol
+
++-----------------+-----+-----+-------+----------------+---------+
+| simm12[12|10:5] | rs2 | rs1 | func3 | simm12[4:1|11] | opcode7 |
++-----------------+-----+-----+-------+----------------+---------+
+31                25    20    15      12               7         0
+```
+
+#### U type
+```
+.insn u opcode7, rd, simm20
+
++--------------------------+----+---------+
+| simm20[20|10:1|11|19:12] | rd | opcode7 |
++--------------------------+----+---------+
+31                         12   7         0
+```
+#### J and UJ type
+```
+.insn j opcode7, rd, symbol
+.insn uj opcode7, rd, symbol
+
++------------+--------------+------------+---------------+----+---------+
+| simm20[20] | simm20[10:1] | simm20[11] | simm20[19:12] | rd | opcode7 |
++------------+--------------+------------+---------------+----+---------+
+31           30             21           20              12   7         0
+```
+
+#### CR type
+```
+.insn cr opcode2, func4, rd, rs2
+
++-------+--------+-----+---------+
+| func4 | rd/rs1 | rs2 | opcode2 |
++-------+--------+-----+---------+
+15      12       7     2        0
+```
+
+#### CI type
+```
+.insn ci opcode2, func3, rd, simm6
+
++-------+----------+--------+------------+---------+
+| func3 | simm6[5] | rd/rs1 | simm6[4:0] | opcode2 |
++-------+----------+--------+------------+---------+
+15      13         12       7            2         0
+```
+
+#### CIW type
+```
+.insn ciw opcode2, func3, rd', uimm8
+
++-------+------------+-----+---------+
+| func3 | uimm8[7:0] | rd' | opcode2 |
++-------+-------- ---+-----+---------+
+15      13           5     2         0
+```
+
+#### CSS type
+```
+.insn css opcode2, func3, rd, uimm6
+
++-------+------------+----+---------+
+| func3 | uimm6[5:0] | rd | opcode2 |
++-------+------------+----+---------+
+15      13           7    2         0
+```
+
+#### CL type
+```
+.insn cl opcode2, func3, rd', uimm5(rs1')
+
++-------+------------+------+------------+------+---------+
+| func3 | uimm5[4:2] | rs1' | uimm5[1:0] |  rd' | opcode2 |
++-------+------------+------+------------+------+---------+
+15      13           10     7            5      2         0
+```
+
+#### CS type
+```
+.insn cs opcode2, func3, rs2', uimm5(rs1')
+
++-------+------------+------+------------+------+---------+
+| func3 | uimm5[4:2] | rs1' | uimm5[1:0] | rs2' | opcode2 |
++-------+------------+------+------------+------+---------+
+15      13           10     7            5      2         0
+```
+
+#### CA type
+```
+.insn ca opcode2, func6, func2, rd', rs2'
+
++-- ----+----------+-------+------+---------+
+| func6 | rd'/rs1' | func2 | rs2' | opcode2 |
++-------+----------+-------+------+---------+
+15      10         7       5      2         0
+```
+
+#### CB type
+```
+.insn cb opcode2, func3, rs1', symbol
+
++-------+--------------+------+------------------+---------+
+| func3 | simm8[8|4:3] | rs1' | simm8[7:6|2:1|5] | opcode2 |
++-------+--------------+------+------------------+---------+
+15      13             10     7                  2         0
+```
+
+#### CJ type
+```
+.insn cj opcode2, symbol
+
++-------+-------------------------------+---------+
+| func3 | simm11[11|4|9:8|10|6|7|3:1|5] | opcode2 |
++-------+-------------------------------+---------+
+15      13                              2         0
+```
+
+### <a name=opcodes></a> Opcodes
+
+The following compressed opcodes can be used as a value in `opcode2` operands,
+and the rest can be used in `opcode7` operands. Opcodes can also be written as
+their binary value.
+
+| Opcode	| Description							|
+|---------------|---------------------------------------------------------------|
+| C0		| Opcode space for compressed instructions.			|
+| C1		| Opcode space for compressed instructions.			|
+| C2		| Opcode space for compressed instructions.			|
+| LOAD		| Opcode space for load instructions.				|
+| LOAD_FP	| Opcode space for floating-point load instructions.		|
+| STORE		| Opcode space for store instructions.				|
+| STORE_FP	| Opcode space for floating-point store instructions.		|
+| AUIPC		| Opcode space for auipc instruction.				|
+| LUI		| Opcode space for lui instruction.				|
+| BRANCH	| Opcode space for branch instructions.				|
+| JAL		| Opcode space for jal instruction.				|
+| JALR		| Opcode space for jalr instruction.				|
+| OP		| Opcode space for ALU instructions.				|
+| OP_32		| Opcode space for 32-bits ALU instructions.			|
+| OP_IMM	| Opcode space for ALU with immediate instructions.		|
+| OP_IMM_32	| Opcode space for 32-bits ALU with immediate instructions.	|
+| OP_FP		| Opcode space for floating-point operation instructions.	|
+| MADD		| Opcode space for madd instruction.				|
+| MSUB		| Opcode space for msub instruction.				|
+| NMADD		| Opcode space for nmadd instruction.				|
+| NMSUB		| Opcode space for msub instruction.				|
+| AMO		| Opcode space for atomic memory operation instructions.	|
+| MISC_MEM	| Opcode space for misc instructions.				|
+| SYSTEM	| Opcode space for system instructions.				|
+
+### <a name=operands></a> Operands
+
+|Operand	|Description								|
+|---------------|-----------------------------------------------------------------------|
+|opcode7	| Unsigned immediate or opcode name for 7-bits opcode.			|
+|opcode2	| Unsigned immediate or opcode name for 2-bits opcode.			|
+|func7		| Unsigned immediate for 7-bits function code.				|
+|func6		| Unsigned immediate for 6-bits function code.				|
+|func4		| Unsigned immediate for 4-bits function code.				|
+|func3		| Unsigned immediate for 3-bits function code.				|
+|func2		| Unsigned immediate for 2-bits function code.				|
+|rd		| Destination register number for operand x, can be GPR or FPR.		|
+|rd’		| Destination register number for operand x, only accept s0-s1, a0-a5, fs0-fs1 and fa0-fa5.|
+|rs1		| First source register number for operand x, can be GPR or FPR.	|
+|rs1’		| First source register number for operand x, only accept s0-s1, a0-a5, fs0-fs1 and fa0-fa5.|
+|rs2		| Second source register number for operand x, can be GPR or FPR.	|
+|rs2’		| Second source register number for operand x, only accept s0-s1, a0-a5, fs0-fs1 and fa0-fa5.|
+|simm12		| Sign-extended 12-bit immediate for operand x.				|
+|simm20		| Sign-extended 20-bit immediate for operand x.				|
+|simm6		| Sign-extended 6-bit immediate for operand x.				|
+|uimm5		| Unsigned 5-bit immediate for operand x.				|
+|uimm6		| Unsigned 6-bit immediate for operand x.				|
+|uimm8		| Unsigned 8-bit immediate for operand x.				|
+|symbol		| Symbol or label reference for operand x.				|
 
 ## Assembler Relocation Functions
 
